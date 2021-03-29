@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+	<title>Babylon.js sample code</title>
+
+	<!-- Babylon.js -->
+	<script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+	<script src="https://preview.babylonjs.com/ammo.js"></script>
+	<script src="https://preview.babylonjs.com/cannon.js"></script>
+	<script src="https://preview.babylonjs.com/Oimo.js"></script>
+	<script src="https://preview.babylonjs.com/earcut.min.js"></script>
+	<script src="https://preview.babylonjs.com/babylon.js"></script>
+	<script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+	<script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+	<script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+	<script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+	<script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+	<script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+	<script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
+	<style>
+		html,
+		body {
+			overflow: hidden;
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+		}
+
+		#renderCanvas {
+			width: 100%;
+			height: 100%;
+			touch-action: none;
+		}
+	</style>
+</head>
+
+<body>
+	<canvas id="renderCanvas"></canvas>
+	<script>
+		var canvas = document.getElementById("renderCanvas");
+
+		var playingNow = false;
+
+		var engine = null;
+		var scene = null;
+		var sceneToRender = null;
+		var createDefaultEngine = function () {
+			return new BABYLON.Engine(canvas, true, {
+				preserveDrawingBuffer: true,
+				stencil: true,
+				disableWebGL2Support: false
+			});
+		};
+		const createScene = function () {
+
+			scene = new BABYLON.Scene(engine);
+
+			criarCamera();
+
+			criarIluminacao();
+
+			criarTeclado();
+
+			createAutomaticMusic();
+
+			
+			gerenciadorClicks();
+
+			return scene;
+		};
+
+		//#region Código Padrão
+		var engine;
+		var scene;
+		initFunction = async function () {
+			var asyncEngineCreation = async function () {
+				try {
+					return createDefaultEngine();
+				} catch (e) {
+					console.log(
+						"the available createEngine function failed. Creating the default engine instead"
+					);
+					return createDefaultEngine();
+				}
+			}
+
+			engine = await asyncEngineCreation();
+			if (!engine) throw 'engine should not be null.';
+			scene = createScene();
+		};
+
+		initFunction().then(() => {
+			sceneToRender = scene
+			engine.runRenderLoop(function () {
+				if (sceneToRender && sceneToRender.activeCamera) {
+					sceneToRender.render();
+				}
+			});
+		});
+
+		// Resize
+		window.addEventListener("resize", function () {
+			engine.resize();
+		});
+		//#endregion
+
+		const criarCamera = function () {
+			const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 4.3, 15, new BABYLON
+				.Vector3(0, 1, 0));
+			camera.attachControl(canvas, true);
+		};
+
+		const criarIluminacao = function () {
+			var luz1 = new BABYLON.PointLight("light", new BABYLON.Vector3(15, 10, 0), scene);
+			var luz2 = new BABYLON.PointLight("light", new BABYLON.Vector3(-15, 10, 0), scene);
+		};
+
+		const criarTeclado = function () {
+			var tecladoMesh = new BABYLON.Mesh("tecladoMesh", scene);
+
+			var carcaca = criarCarcaca();
+			var teclas = criarTeclas();
+
+
+			tecladoMesh.addChild(carcaca);
+			tecladoMesh.addChild(teclas);
+
+		};
+
+
+
+		const criarCarcaca = function () {
+			var carcacaMesh = new BABYLON.Mesh("carcacaMesh", scene);
+			var color = new BABYLON.StandardMaterial("color", scene);
+			color.diffuseColor = new BABYLON.Color3.FromHexString('#2e2e2f');
+
+
+
+			//BASE
+			var base = BABYLON.MeshBuilder.CreateBox('base', { height: 1, width: 17.2, depth: 11.5 });
+			base.material = color;
+			base.position.y = -0.5;
+			base.position.x = -0.15;
+			base.position.z = 3.25;
+			carcacaMesh.addChild(base);
+
+			//LADO ESQUERDO
+			var ladoEsquerdo = BABYLON.MeshBuilder.CreateBox('ladoEsquerdo', { height: 1.2, width: 0.7, depth: 5 });
+			ladoEsquerdo.material = color;
+			ladoEsquerdo.position.x = -8.4;
+			carcacaMesh.addChild(ladoEsquerdo);
+
+			//LADO DIREITO
+			var ladoDireito = BABYLON.MeshBuilder.CreateBox('ladoDireito', { height: 1.2, width: 0.7, depth: 5 });
+			ladoDireito.material = color;
+			ladoDireito.position.x = 8.1;
+			carcacaMesh.addChild(ladoDireito);
+
+			//SUPERIOR
+			var superior = BABYLON.MeshBuilder.CreateBox('superior', { height: 1.2, width: 17.2, depth: 1 });
+			superior.material = color;
+			superior.position.z = 3;
+			superior.position.x = -0.15;
+			carcacaMesh.addChild(superior);
+
+			//SUPERIOR RAMPA
+			var superiorRampa = BABYLON.MeshBuilder.CreateBox('superiorRampa', { height: 0.5, width: 17.2, depth: 1 });
+			superiorRampa.material = color;
+			superiorRampa.position.z = 3.55;
+			superiorRampa.position.y = 0.043;
+			superiorRampa.position.x = -0.15;
+			superiorRampa.rotation.x = 1;
+			carcacaMesh.addChild(superiorRampa);
+
+
+
+			//PADS E BOTOES
+
+			//var visor = BABYLON.MeshBuilder.CreateBox('visor', { height: 0.0001, width: 17.2, depth: 5.1 });
+			visor = createBackBlockWithMaterial();
+
+			visor.position.y = 0.001;
+			visor.position.x = -0.15;
+			visor.position.z = 6.45;
+
+
+
+			carcacaMesh.addChild(visor);
+
+
+
+			return carcacaMesh;
+
+
+		}
+
+		const createBackBlockWithMaterial = function () {
+			var faceUV = [];
+			faceUV[0] = new BABYLON.Vector4(0 * 1 / 4, 1 * 1 / 4, 1 * 1 / 4, 2 * 1 / 4);
+
+			const back = BABYLON.MeshBuilder.CreateBox("back", { faceUV: faceUV, wrap: true, height: 0.001, width: 17.2, depth: 5.1 }, scene);
+
+			const materialTeclado = new BABYLON.StandardMaterial("materialTeclado");
+			materialTeclado.diffuseTexture = new BABYLON.Texture("./assets/UV/teclado.jpg");
+
+			back.material = materialTeclado;
+
+			return back;
+		}
+
+		//CRIA TECLAS BRANCAS E PRETAS
+		const criarTeclas = function () {
+			var teclasMesh = new BABYLON.Mesh("teclasMesh", scene);
+
+			let posicaoInicialX = -7.5;
+
+
+			//CRIA TECLAS BRANCAS
+			for (var index = 0; index < 15; index++) {
+				var teclaBranca = BABYLON.MeshBuilder.CreateBox(`teclaBranca${index}`, { height: 0.75, width: 1, depth: 5 });
+
+				teclaBranca.position.x = posicaoInicialX + index * 1.05;
+
+
+				teclasMesh.addChild(teclaBranca);
+
+			}
+
+			//CRIA TECLAS PRETAS
+			posicaoInicialX = -7;
+			let contTeclasPretas = 0
+			var boolTeclasPretas = new Boolean();
+			boolTeclasPretas = false;
+			var boolPularTecla = new Boolean();
+			boolPularTecla = false;
+
+			for (var index = 0; index < 14; index++) {
+
+
+				if (boolPularTecla == true) {
+					boolPularTecla = false;
+					contTeclasPretas = 0;
+
+					continue;
+				}
+
+				var teclaPreta = BABYLON.MeshBuilder.CreateBox(`teclaPreta${index}`, { height: 0.75, width: 0.5, depth: 3 })
+				var color = new BABYLON.StandardMaterial("color", scene);
+				color.diffuseColor = new BABYLON.Color3.FromHexString('#2e2e2f');
+
+
+				if (contTeclasPretas < 2 && boolTeclasPretas == false) {
+					teclaPreta.position.x = posicaoInicialX + index * 1.05;
+					teclaPreta.position.y = 0.3;
+					teclaPreta.position.z = 1;
+					teclaPreta.rotation.x = 0.07;
+					teclaPreta.material = color;
+
+					if (contTeclasPretas == 1) {
+						boolTeclasPretas = true;
+						contTeclasPretas = 0;
+						boolPularTecla = true
+					}
+					teclasMesh.addChild(teclaPreta);
+
+				}
+
+				if (contTeclasPretas < 3 && boolTeclasPretas == true) {
+					teclaPreta.position.x = posicaoInicialX + index * 1.05;
+					teclaPreta.position.y = 0.3;
+					teclaPreta.position.z = 1;
+					teclaPreta.rotation.x = 0.07;
+					teclaPreta.material = color;
+
+					if (contTeclasPretas == 2) {
+						boolTeclasPretas = false;
+						contTeclasPretas = 0;
+						boolPularTecla = true
+					}
+					teclasMesh.addChild(teclaPreta);
+
+				}
+				contTeclasPretas += 1;
+			}
+			return teclasMesh;
+		}
+
+
+
+		const gerenciadorClicks = function () {
+			scene.onPointerDown = function (evt, pickResult) {
+
+
+				
+
+				if (pickResult.hit && pickResult.pickedMesh.name.includes('tecla') && playingNow ==false){
+					console.log(pickResult.pickedMesh.name);
+					playMusic(pickResult.pickedMesh.name);
+				}
+
+				//TECLAS PRETAS 0 1 3 4 5 7 8 10 11 12
+				
+			};
+		}
+
+		const playMusic = function (nota) {
+			createParticle(nota);
+
+			if (nota.includes('Preta')) {
+				handleAnimation(nota, true);
+			} else {
+				handleAnimation(nota, false);
+			}
+
+			executarSom(nota);
+		}
+
+
+
+		const handleAnimation = function (componente, isBlackNote) {
+			var selectedMesh = scene.getMeshByID(componente);
+
+			var frameRate = 100;
+			//Rotation Animation
+			var click = new BABYLON.Animation("click", "rotation.x",
+				frameRate,
+				BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+				BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+
+			console.log(selectedMesh.rotation.x)
+
+			var keyFrames = [];
+
+			keyFrames.push({
+				frame: 0,
+				value: isBlackNote ? 0 : -0.06
+			});
+
+			keyFrames.push({
+				frame: frameRate,
+				value: isBlackNote ? 0.07 : 0
+			});
+
+			click.setKeys(keyFrames);
+			scene.beginDirectAnimation(selectedMesh, [click], 0, 2 * frameRate, true, 2);
+
+			//Position Animation
+			var click = new BABYLON.Animation("click", "position.y",
+				frameRate,
+				BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+				BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+
+
+
+			keyFrames = [];
+
+			keyFrames.push({
+				frame: 0,
+				value: isBlackNote ? 0.2 : -0.1
+			});
+
+			keyFrames.push({
+				frame: frameRate,
+				value: isBlackNote ? 0.3 : 0
+			});
+
+			click.setKeys(keyFrames);
+			scene.beginDirectAnimation(selectedMesh, [click], 0, 2 * frameRate, true, 2);
+		}
+
+		const executarSom = function (som) {
+
+			switch (som) {
+				case "teclaBranca0":
+					const bounce = new BABYLON.Sound("bounce", "./assets/sounds/1_oitava/c3.mp3", scene,
+
+						null, {
+						loop: false,
+						autoplay: true
+					});
+
+					break;
+
+				case "teclaBranca1":
+					const bounce1 = new BABYLON.Sound("bounce1", "./assets/sounds/1_oitava/d3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				case "teclaBranca2":
+					const bounce2 = new BABYLON.Sound("bounce2", "./assets/sounds/1_oitava/e3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				case "teclaBranca3":
+					const bounce3 = new BABYLON.Sound("bounce3", "./assets/sounds/1_oitava/f3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				case "teclaBranca4":
+					const bounce4 = new BABYLON.Sound("bounce4", "./assets/sounds/1_oitava/g3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				case "teclaBranca5":
+					const bounce5 = new BABYLON.Sound("bounce5", "./assets/sounds/1_oitava/a3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				case "teclaBranca6":
+					const bounce6 = new BABYLON.Sound("bounce6", "./assets/sounds/1_oitava/b3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				case "teclaBranca7":
+					const bounce7 = new BABYLON.Sound("bounce7", "./assets/sounds/2_oitava/c4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaBranca8":
+					const bounce8 = new BABYLON.Sound("bounce8", "./assets/sounds/2_oitava/d4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaBranca9":
+					const bounce9 = new BABYLON.Sound("bounce9", "./assets/sounds/2_oitava/e4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaBranca10":
+					const bounce10 = new BABYLON.Sound("bounce10", "./assets/sounds/2_oitava/f4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaBranca11":
+					const bounce11 = new BABYLON.Sound("bounce11", "./assets/sounds/2_oitava/g4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaBranca12":
+					const bounce12 = new BABYLON.Sound("bounce12", "./assets/sounds/2_oitava/a4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaBranca13":
+					const bounce13 = new BABYLON.Sound("bounce13", "./assets/sounds/2_oitava/b4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaBranca14":
+					const bounce14 = new BABYLON.Sound("bounce14", "./assets/sounds/MEME AQUI TEM CORAGEM!.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				//teclas pretas 0 1 3 4 5       
+				case "teclaPreta0":
+					const bounce15 = new BABYLON.Sound("bounce15", "./assets/sounds/1_oitava/sustenido/c-3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta1":
+					const bounce16 = new BABYLON.Sound("bounce16", "./assets/sounds/1_oitava/sustenido/d-3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta3":
+					const bounce17 = new BABYLON.Sound("bounce17", "./assets/sounds/1_oitava/sustenido/f-3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta4":
+					const bounce18 = new BABYLON.Sound("bounce18", "./assets/sounds/1_oitava/sustenido/g-3.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta5":
+					const bounce19 = new BABYLON.Sound("bounce19", "./assets/sounds/1_oitava/sustenido/a-4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+
+				//teclas pretas 7 8 10 11 12
+
+				case "teclaPreta7":
+					const bounce20 = new BABYLON.Sound("bounce20", "./assets/sounds/2_oitava/sustenido/c-4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta8":
+					const bounce21 = new BABYLON.Sound("bounce21", "./assets/sounds/2_oitava/sustenido/d-4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta10":
+					const bounce22 = new BABYLON.Sound("bounce22", "./assets/sounds/2_oitava/sustenido/f-4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta11":
+					const bounce23 = new BABYLON.Sound("bounce23", "./assets/sounds/2_oitava/sustenido/g-4.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+				case "teclaPreta12":
+					const bounce24 = new BABYLON.Sound("bounce24", "./assets/sounds/2_oitava/sustenido/a-5.mp3", scene,
+						null, {
+						loop: false,
+						autoplay: true
+					});
+					break;
+			}
+		}
+
+		
+
+		const createParticle = function (tecla) {
+
+			//SearchComponent
+			var teclaItem = scene.getMeshByID(tecla);
+
+			// Create a particle system
+			var particleSystem = new BABYLON.ParticleSystem("particles", 5000, scene);
+
+
+			if (!tecla.includes("Preta")) {
+				//Texture of each particle
+				particleSystem.particleTexture = new BABYLON.Texture("./assets/fogo.png", scene);
+
+				// Where the particles come from
+				particleSystem.emitter = new BABYLON.Vector3(teclaItem.position.x, 1, 0); // the starting object, the emitter
+				particleSystem.minEmitBox = new BABYLON.Vector3(-0.375, 0, -2); // Starting all from
+				particleSystem.maxEmitBox = new BABYLON.Vector3(0.375, 0, 2); // To...
+			} else {
+				//Texture of each particle
+				particleSystem.particleTexture = new BABYLON.Texture("./assets/raio.png", scene);
+
+				// Where the particles come from
+				particleSystem.emitter = new BABYLON.Vector3(teclaItem.position.x, 1, teclaItem.position.z); // the starting object, the emitter
+				particleSystem.minEmitBox = new BABYLON.Vector3(-0.2, 0, -1); // Starting all from
+				particleSystem.maxEmitBox = new BABYLON.Vector3(0.2, 0, 1); // To...
+			}
+
+
+			// Colors of all particles
+			particleSystem.color1 = new BABYLON.Color4(1, 1, 1.0, 1.0);
+			particleSystem.color2 = new BABYLON.Color4(1, 1, 1.0, 1.0);
+			particleSystem.colorDead = new BABYLON.Color4(0, 0, 0.2, 0.0);
+
+			// Size of each particle (random between...
+			//particleSystem.minSize = 0.1;
+			//particleSystem.maxSize = 0.5;
+
+			particleSystem.minSize = 1;
+			particleSystem.maxSize = 1.5;
+
+			// Life time of each particle (random between...
+			particleSystem.minLifeTime = 0.5;
+			particleSystem.maxLifeTime = 0.5;
+
+			// Emission rate
+			//particleSystem.emitRate = 1500;
+			particleSystem.emitRate = 150;
+
+			// Blend mode : BLENDMODE_ONEONE, or BLENDMODE_STANDARD
+			particleSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
+
+			// Set the gravity of all particles
+			particleSystem.gravity = new BABYLON.Vector3(0, -4, 0);
+
+			// Direction of each particle after it has been emitted
+			particleSystem.direction1 = new BABYLON.Vector3(-2, 8, 2);
+			particleSystem.direction2 = new BABYLON.Vector3(2, 8, -2);
+
+			// Angular speed, in radians
+			particleSystem.minAngularSpeed = 0;
+			particleSystem.maxAngularSpeed = 0;
+			//particleSystem.maxAngularSpeed = Math.PI;
+
+			// Speed
+			particleSystem.minEmitPower = 1;
+			particleSystem.maxEmitPower = 1;
+			particleSystem.updateSpeed = 0.01;
+			//particleSystem.updateSpeed = 0.001;
+			particleSystem.targetStopDuration = 0.02;
+
+
+			// Start the particle system
+			particleSystem.start();
+
+
+			//return scene;
+		}
+
+		const createAutomaticMusic = function(){
+        
+        const SoundNotes = [ "teclaBranca3", "teclaBranca3", "teclaBranca2","teclaBranca3", "pausa", "teclaBranca0", "pausa", "teclaBranca0", "teclaBranca3", "teclaPreta5", "teclaBranca5", "teclaBranca3", "pausa", "pausa", "pausa", "pausa", "teclaBranca10", "teclaBranca10", "teclaBranca9","teclaBranca10", "pausa", "teclaBranca7", "pausa", "teclaBranca7", "teclaBranca10", "teclaPreta12", "teclaBranca12", "teclaBranca10", "pausa", "pausa", "pausa", "pausa",  
+		
+		"teclaBranca0", "teclaBranca10", "teclaBranca7", "teclaPreta5", "teclaPreta12", "teclaBranca7", "teclaBranca12", "teclaBranca10", 
+		"teclaBranca0", "teclaBranca10", "teclaBranca7", "teclaPreta5", "teclaPreta12", "teclaBranca7", "teclaBranca12", "teclaBranca10", 
+		"teclaBranca1", "teclaBranca10", "teclaBranca7", "teclaPreta5", "teclaPreta12", "teclaBranca7", "teclaBranca12", "teclaBranca10", 
+		"teclaBranca1", "teclaBranca10", "teclaBranca7", "teclaPreta5", "teclaPreta12", "teclaBranca7", "teclaBranca12", "teclaBranca10", 
+		"teclaPreta5", "teclaBranca10", "teclaBranca7", "teclaPreta5", "teclaPreta12", "teclaBranca7", "teclaBranca12", "teclaBranca10",  
+		"teclaPreta5", "teclaBranca10", "teclaBranca7", "teclaPreta5", "teclaPreta12", "teclaBranca7", "teclaBranca12", "teclaBranca10", 
+
+		"teclaBranca11", "teclaBranca7", "teclaBranca10", "teclaBranca7", "teclaBranca11", "teclaBranca7", "teclaBranca12", "teclaBranca7",
+		"teclaPreta12", "teclaBranca7", "teclaBranca12", "teclaBranca7", "teclaBranca11", "teclaBranca7", "teclaBranca10", "teclaBranca7"
+
+	 ];
+        
+        var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+        var panel = new BABYLON.GUI.StackPanel();   
+        panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+        panel.isVertical = false;
+        advancedTexture.addControl(panel);   
+
+        var button = BABYLON.GUI.Button.CreateSimpleButton("but", "Shrek + Sweet Child O' Mine DEMO");
+        button.width = "300px";
+        button.height = "50px";
+        button.color = "white";
+        button.background = "blue";
+        button.zIndex = 0;
+		
+
+
+        button.top = window.screen.height * -0.35;
+        
+
+        button.onPointerDownObservable.add(function() {
+            if (!playingNow) {
+                playingNow = true;
+
+                SoundNotes.forEach((e, i) => {
+					if(e.includes('tecla')){
+						window.setTimeout(() => {
+                        playMusic(e)
+                    }, 200*i)
+					}
+                    
+                });
+
+                window.setTimeout(()=>{ 
+					playingNow = false; 
+				}, 200*SoundNotes.length);
+            }
+        });
+        panel.addControl(button);
+    }
+
+	</script>
+</body>
+
+</html>
